@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "vast-file-api"
+version = "0.1.0"
+description = ""
+authors = ["Ilya Pekelnyi <Ilya.Pekelnyi@etxcapital.com>"]
+readme = "README.md"
+packages = [{include = "vast_file_api"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "0.85.0"
+aiofiles = "22.1.0"
+uvicorn = {"extras" = ["standard"], version = "0.18.3"}
+
+[tool.poetry.group.test.dependencies]
+black = "22.8.0"
+isort = "5.10.1"
+bandit = "1.7.4"
+flake8 = "5.0.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
