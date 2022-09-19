@@ -1,12 +1,13 @@
 import os
 import secrets
+from pathlib import Path
 from typing import Any
 
 import aiofiles
 from fastapi import Depends, Form, HTTPException, UploadFile, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from vast_file_api import app
+from vast_file_api import app, settings
 from vast_file_api.data_access import FileAccess
 
 security = HTTPBasic()
@@ -32,7 +33,7 @@ def auth_user(credentials: HTTPBasicCredentials = Depends(security)) -> Any:
     return credentials.username
 
 
-# TODO: implement cacheing
+# TODO: implement caching
 @app.get("/text_file")  # type: ignore
 async def retrieve_file(
     path: str, name: str, credentials: HTTPBasicCredentials = Depends(auth_user)
@@ -107,4 +108,5 @@ async def delete_file(
 async def list_directory(
     path: str, credentials: HTTPBasicCredentials = Depends(auth_user)
 ) -> list[str]:
-    return os.listdir(path)
+    file_path = settings.FILE_DIRECTORY / Path(path)
+    return os.listdir(file_path)
