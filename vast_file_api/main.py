@@ -32,6 +32,7 @@ def auth_user(credentials: HTTPBasicCredentials = Depends(security)) -> Any:
     return credentials.username
 
 
+# TODO: implement cacheing
 @app.get("/text_file")  # type: ignore
 async def retrieve_file(
     path: str, name: str, credentials: HTTPBasicCredentials = Depends(auth_user)

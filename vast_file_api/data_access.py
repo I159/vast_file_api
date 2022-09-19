@@ -10,15 +10,14 @@ class FileAccess:
         self.async_open = async_open
 
     async def retrieve(self, path: str, name: str) -> str:
-        # TODO: implement pagination and return the file chunk by chank
-        # for example 1024 bytes.
+        # TODO: implement pagination and return the file chunk by chunk
         file_path = settings.FILE_DIRECTORY / Path(path) / Path(name)
         async with self.async_open(file_path, mode="r") as file:
             contents: str = await file.read()
             return contents
 
     async def create(self, name: str, path: str, file_: Any) -> None:
-        # TODO: check free space and raise an error if there is no free space.
+        # TODO: check free space and raise an error if there is not enough free space.
         contents = file_.file.read()
         directory = settings.FILE_DIRECTORY / Path(path)
         if not directory.is_dir():
@@ -29,7 +28,7 @@ class FileAccess:
             await file.write(contents)
 
     async def substitute(self, name: str, path: str, file_: Any) -> None:
-        # TODO: check free space and raise an error if there is no free space.
+        # TODO: check free space and raise an error if there is not enough free space.
         directory = settings.FILE_DIRECTORY / Path(path)
         file_path = directory / name
         contents = file_.file.read()
@@ -37,7 +36,7 @@ class FileAccess:
             await file.write(contents)
 
     async def update(self, name: str, path: str, offset: int, file_: Any) -> None:
-        # TODO: check free space and raise an error if there is no free space.
+        # TODO: check free space and raise an error if there is not enough free space.
         directory = settings.FILE_DIRECTORY / Path(path)
         file_path = directory / name
         if file_path.is_file():
