@@ -1,42 +1,25 @@
 import os
 import secrets
-from typing import Optional
+from typing import Any
 
 import aiofiles
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, Form, HTTPException, UploadFile, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import BaseModel
 
-app = FastAPI()
+from vast_file_api import app
+from vast_file_api.data_access import FileAccess
+
 security = HTTPBasic()
 
 
-class PartialFile(BaseModel):
-    contents: str
-    name: str
-    path: str
-    offset: int
-
-
-class ExistingFile(BaseModel):
-    contents: Optional[str]
-    name: str
-    path: str
-
-
-class NewFile(BaseModel):
-    contents: str
-    name: str
-
-
-def auth_user(credentials: HTTPBasicCredentials = Depends(security)):
+def auth_user(credentials: HTTPBasicCredentials = Depends(security)) -> Any:
     current_username_bytes = credentials.username.encode("utf8")
-    correct_username_bytes = b"registered_user"
+    correct_username_bytes = b"login"
     is_correct_username = secrets.compare_digest(
         current_username_bytes, correct_username_bytes
     )
     current_password_bytes = credentials.password.encode("utf8")
-    correct_password_bytes = b"secure_password"
+    correct_password_bytes = b"password"
     is_correct_password = secrets.compare_digest(
         current_password_bytes, correct_password_bytes
     )
@@ -49,64 +32,78 @@ def auth_user(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 
-@app.get("/text_file")
+@app.get("/text_file")  # type: ignore
 async def retrieve_file(
-    file_path: str, credentials: HTTPBasicCredentials = Depends(auth_user)
-):
-    if os.path.isfile(file_path):
-        async with aiofiles.open(file_path, mode="r") as f:
-            contents = await f.read()
-            return {"file_contents": contents}
+    path: str, name: str, credentials: HTTPBasicCredentials = Depends(auth_user)
+) -> dict[str, str]:
+    file_access = FileAccess(aiofiles.open)
+    try:
+        contents = await file_access.retrieve(path, name)
+        return {"name": name, "path": path, "file_contents": contents}
+    except FileNotFoundError as err:
+        raise HTTPException(status_code=404, detail=err.filename) from err
 
 
-@app.post("/text_file")
+@app.post("/text_file")  # type: ignore
 async def create_file(
-    file_: NewFile, credentials: HTTPBasicCredentials = Depends(auth_user)
-):
-    async with aiofiles.open(file_.name, mode="w") as f:
-        await f.write(file_.contents)
-    return file_.dict()
+    file_: UploadFile,
+    name: str = Form(...),
+    path: str = Form(),
+    credentials: HTTPBasicCredentials = Depends(auth_user),
+) -> dict[str, str]:
+    file_access = FileAccess(aiofiles.open)
+    try:
+        await file_access.create(name, path, file_)
+    except FileExistsError as err:
+        raise HTTPException(status_code=409, detail=str(err)) from err
+    return {"name": name, "path": path}
 
 
-@app.put("/text_file")
+@app.put("/text_file")  # type: ignore
 async def substitute_file(
-    file_: ExistingFile, credentials: HTTPBasicCredentials = Depends(auth_user)
-):
-    if os.path.isfile(file_.path):
-        async with aiofiles.open(file_.path, mode="w") as f:
-            await f.write(file_.contents)
-        return file_.dict()
+    file_: UploadFile,
+    name: str = Form(...),
+    path: str = Form(...),
+    credentials: HTTPBasicCredentials = Depends(auth_user),
+) -> dict[str, str]:
+    file_access = FileAccess(aiofiles.open)
+    try:
+        await file_access.substitute(name, path, file_)
+    except FileNotFoundError as err:
+        raise HTTPException(status_code=404, detail=err.filename) from err
+    return {"name": name, "path": path}
 
 
-@app.patch("/text_file")
+@app.patch("/text_file")  # type: ignore
 async def change_file(
-    file_: PartialFile, credentials: HTTPBasicCredentials = Depends(auth_user)
-):
-    if os.path.isfile(file_.path):
-        async with aiofiles.open("ditto_moves.txt", mode="w") as f:
-            f.seek(file_.offset)
-            await f.write(file_.contents)
-        async with aiofiles.open(file_.path) as f:
-            contents = await f.read()
-            updated = file_.dict()
-            updated["contents"] = contents
-            return updated
+    file_: UploadFile,
+    name: str = Form(...),
+    path: str = Form(...),
+    offset: int = Form(...),
+    credentials: HTTPBasicCredentials = Depends(auth_user),
+) -> dict[str, str]:
+    file_access = FileAccess(aiofiles.open)
+    try:
+        await file_access.update(name, path, offset, file_)
+    except FileNotFoundError as err:
+        raise HTTPException(status_code=404, detail=err.filename) from err
+    return {"name": name, "path": path}
 
 
-@app.patch("/text_file")
+@app.delete("/text_file")  # type: ignore
 async def delete_file(
-    file_: ExistingFile, credentials: HTTPBasicCredentials = Depends(auth_user)
-):
-    if os.path.isfile(file_.path):
-        async with aiofiles.open(file_.path, mode="r") as f:
-            contents = await f.read()
-            deleted = file_.dict()
-            deleted["contents"] = contents
-
-        os.unlink(file_.path)
-        return deleted
+    name: str, path: str, credentials: HTTPBasicCredentials = Depends(auth_user)
+) -> dict[str, str]:
+    file_access = FileAccess(aiofiles.open)
+    try:
+        file_access.delete(name, path)
+    except FileNotFoundError:
+        pass
+    return {"name": name, "path": path}
 
 
-@app.get("/directory")
-async def list_directory(credentials: HTTPBasicCredentials = Depends(auth_user)):
-    return os.listdir()
+@app.get("/directory")  # type: ignore
+async def list_directory(
+    path: str, credentials: HTTPBasicCredentials = Depends(auth_user)
+) -> list[str]:
+    return os.listdir(path)

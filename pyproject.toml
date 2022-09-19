@@ -2,22 +2,39 @@
 name = "vast-file-api"
 version = "0.1.0"
 description = ""
-authors = ["Ilya Pekelnyi <Ilya.Pekelnyi@etxcapital.com>"]
-readme = "README.md"
+authors = ["Illa Pekelny <pekelnyi@gmail.com>"]
+#readme = "README.md"
 packages = [{include = "vast_file_api"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
 fastapi = "0.85.0"
 aiofiles = "22.1.0"
-uvicorn = {"extras" = ["standard"], version = "0.18.3"}
+uvicorn = "0.18.3"
+python-multipart = "0.0.5"
 
-[tool.poetry.group.test.dependencies]
+[tool.poetry.group.dev.dependencies]
 black = "22.8.0"
 isort = "5.10.1"
 bandit = "1.7.4"
-flake8 = "5.0.4"
+pylint = "2.15.3"
+mypy = "0.971"
+pre-commit = "2.20.0"
+types-aiofiles = "22.1.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+[tool.pylint.master]
+init-hook='import sys; sys.path.append(os.getcwd())'
+# TODO: don't disable docstrings
+# NOTE: disable unused arguments because of FastAPI auth
+disable=["W0511", "E0401", "C0114", "C0115", "C0116", "W0613"]
+min-public-methods=0
+
+[tool.mypy]
+strict = true
